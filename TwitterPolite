@@ -87,7 +87,7 @@ sub follow {
 
 sub InitTwitterClient {
 	my $twitter_client = Twitter::API->new_with_traits(
-		traits                  => 'Enchilada',
+		traits                  => [ qw/ApiMethods RateLimiting/ ],
 		consumer_key            => $config->{Consumer_Key},
 		consumer_secret         => $config->{Consumer_Secret},
 		access_token            => $config->{Access_Token},
