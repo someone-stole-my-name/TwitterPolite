@@ -1,0 +1,111 @@
+#!/usr/bin/perl
+use strictures;
+use Try::Tiny;
+use Twitter::API;
+use Twitter::API::Util 'is_twitter_api_error';
+use utf8;
+use List::Util 'shuffle';
+use File::JSON::Slurper qw/ read_json /;
+use Array::Utils qw/ array_minus /;
+use open qw(:std :utf8);
+
+use constant CONFIG_FILE    => 'config.json';
+my $config = read_json(CONFIG_FILE);
+my ($client, $screen_name) = InitTwitterClient($config);
+
+# TODO merge both anon subs into a proper sub
+my $followers = sub {
+	my $cursor = -1;
+	my @arr =();
+	while($cursor != 0) {
+		my $followers_ids = $client->followers_ids({
+				'screen_name' => $screen_name,
+				'count' => 5000,
+				'cursor' => $cursor,
+			}
+		);
+
+		$cursor = $followers_ids->{next_cursor};
+
+		for (my$i = 0; $i <= $#{$followers_ids->{ids}}; $i += 100) {
+			my $id_100;
+			foreach($i .. $i+100-1) {
+				last unless @{$followers_ids->{ids}}[$_];
+				$id_100 .= @{$followers_ids->{ids}}[$_];
+				$id_100 .= ',' unless $_ == $i+100-1;
+			}
+
+			my $users = $client->lookup_users({'user_id'   => $id_100});
+			foreach my $user (@{$users}) {
+				push @arr, $user->{id_str};
+			}
+		}
+	}
+	return \@arr;
+};
+
+my $friends = sub {
+	my $cursor = -1;
+	my @arr =();
+	while($cursor != 0) {
+		my $friends_ids = $client->friends_ids({
+				'screen_name' => $screen_name,
+				'count' => 5000,
+				'cursor' => $cursor,
+			}
+		);
+
+		$cursor = $friends_ids->{next_cursor};
+
+		for (my$i = 0; $i <= $#{$friends_ids->{ids}}; $i += 100) {
+			my $id_100;
+			foreach($i .. $i+100-1) {
+				last unless @{$friends_ids->{ids}}[$_];
+				$id_100 .= @{$friends_ids->{ids}}[$_];
+				$id_100 .= ',' unless $_ == $i+100-1;
+			}
+
+			my $users = $client->lookup_users({'user_id'   => $id_100});
+			foreach my $user (@{$users}) {
+				push @arr, $user->{id_str};
+			}
+		}
+	}
+	return \@arr;
+};
+
+my @tofollow = array_minus(@{$followers->()}, @{$friends->()});
+follow(\@tofollow, $client, $config);
+
+sub follow {
+	my ($ids, $client, $config) = @_;
+	my $limit = scalar(@{$ids}) > $config->{FollowsPerRun} ? $config->{FollowsPerRun} : scalar(@{$ids});
+	foreach my $i (0..$limit-1) {
+		$client->create_friend(@{$ids}[$i]);
+	}
+}
+
+sub InitTwitterClient {
+	my $twitter_client = Twitter::API->new_with_traits(
+		traits                  => 'Enchilada',
+		consumer_key            => $config->{Consumer_Key},
+		consumer_secret         => $config->{Consumer_Secret},
+		access_token            => $config->{Access_Token},
+		access_token_secret     => $config->{Access_Token_Secret},
+	);
+
+	try {
+		my $r = $twitter_client->verify_credentials;
+		return ($twitter_client, $r->{screen_name});
+	} catch {
+		print $_->http_request->as_string . "\n";
+		print $_->http_response->as_string . "\n";
+		print 'No use retrying right away' . "\n" if $_->is_permanent_error;
+		if ( $_->is_token_error ) {
+			print "There's something wrong with this token." . "\n";
+		}
+		if ( $_->twitter_error_code == 326 ) {
+			print "Oops! Twitter thinks you're spam bot!" . "\n";
+		}
+	};
+}
