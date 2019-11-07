@@ -81,6 +81,7 @@ sub follow {
 	my ($ids, $client, $config) = @_;
 	my $limit = scalar(@{$ids}) > $config->{FollowsPerRun} ? $config->{FollowsPerRun} : scalar(@{$ids});
 	foreach my $i (0..$limit-1) {
+		print "Following user_id: " . @{$ids}[$i] . "\n";
 		$client->create_friend(@{$ids}[$i]);
 	}
 }
