@@ -17,4 +17,5 @@ COPY TwitterPolite /
 COPY Entrypoint /
 RUN chmod 755 /TwitterPolite
 RUN chmod 755 /Entrypoint
+WORKDIR /
 ENTRYPOINT ["/Entrypoint"]
