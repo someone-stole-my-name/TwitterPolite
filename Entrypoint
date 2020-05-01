@@ -1,4 +1,4 @@
-#/bin/ash
+#!/bin/ash
 CONFIG=$( jq -n \
                   --arg ck  "$CONSUMER_KEY" \
                   --arg cs  "$CONSUMER_SECRET" \
