@@ -1,0 +1,10 @@
+#/bin/ash
+CONFIG=$( jq -n \
+                  --arg ck  "$CONSUMER_KEY" \
+                  --arg cs  "$CONSUMER_SECRET" \
+                  --arg at  "$ACCESS_TOKEN" \
+                  --arg ats "$ACCESS_TOKEN_SECRET" \
+                  --arg fpr "$FOLLOW_PER_RUN" \
+                  '{Consumer_Key: $ck, Consumer_Secret: $cs, Access_Token: $at, Access_Token_Secret: $ats, FollowsPerRun: ($fpr|tonumber)}' )
+
+echo $CONFIG > /config.json && perl /TwitterPolite
